@@ -422,8 +422,14 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 		}
 
 		// 判断是否应该添加节点的逻辑：
-		// 对所有代理组都添加节点（除了链式代理已经在上面跳过了）
+		// 检查是否有 include-all-proxies: true
 		shouldAddNodes := true
+		if includeAllProxies, exists := proxyGroup["include-all-proxies"]; exists {
+			if include, ok := includeAllProxies.(bool); ok && include {
+				shouldAddNodes = false
+				log.Printf("跳过代理组 '%s'：包含 include-all-proxies: true", groupName)
+			}
+		}
 
 		// 如果不需要添加节点，跳过
 		if !shouldAddNodes {
@@ -563,7 +569,7 @@ func createOrderedProxyGroupsNode(proxyGroups interface{}) (*yaml.Node, error) {
 		groupNode.Kind = yaml.MappingNode
 
 		// 定义代理组字段顺序
-		groupFieldOrder := []string{"name", "type", "url", "interval", "filter", "proxies"}
+		groupFieldOrder := []string{"name", "type", "url", "interval", "filter", "include-all-proxies", "proxies"}
 
 		// 按顺序添加字段
 		for _, key := range groupFieldOrder {
