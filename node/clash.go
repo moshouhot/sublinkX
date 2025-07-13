@@ -422,15 +422,8 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 		}
 
 		// 判断是否应该添加节点的逻辑：
-		// 通过名称关键词判断
-		shouldAddNodes := false
-		keywords := []string{"节点选择", "自动选择", "手动切换"}
-		for _, keyword := range keywords {
-			if strings.Contains(groupName, keyword) {
-				shouldAddNodes = true
-				break
-			}
-		}
+		// 对所有代理组都添加节点（除了链式代理已经在上面跳过了）
+		shouldAddNodes := true
 
 		// 如果不需要添加节点，跳过
 		if !shouldAddNodes {
