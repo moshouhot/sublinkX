@@ -1,0 +1,111 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            output: sublink_amd64
+          - goos: linux
+            goarch: arm64
+            output: sublink_arm64
+          - goos: windows
+            goarch: amd64
+            output: sublink_windows_amd64.exe
+          - goos: darwin
+            goarch: amd64
+            output: sublink_darwin_amd64
+          - goos: darwin
+            goarch: arm64
+            output: sublink_darwin_arm64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Build frontend
+      run: |
+        cd webs
+        npm install
+        npm run build
+
+    - name: Build backend
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        go mod tidy
+        go build -ldflags="-s -w" -o ${{ matrix.output }} main.go
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.output }}
+        path: ${{ matrix.output }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: ./artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        body: |
+          ## SublinkX ${{ github.ref_name }}
+
+          ### 🎉 新功能
+          - 智能代理组选择：只向包含特定关键词的代理组添加节点
+          - 优化节点合并逻辑，减少配置冗余
+
+          ### 🔧 改进
+          - 简化关键词匹配：`节点选择`、`自动选择`、`手动切换`
+          - 移除代理组数量限制，支持任意数量的符合条件的代理组
+          - 优化代码结构，提高性能
+
+          ### 📦 下载说明
+          - `sublink_amd64`: Linux x86_64
+          - `sublink_arm64`: Linux ARM64
+          - `sublink_windows_amd64.exe`: Windows x86_64
+          - `sublink_darwin_amd64`: macOS Intel
+          - `sublink_darwin_arm64`: macOS Apple Silicon
+
+          ### 🚀 快速安装
+          ```bash
+          curl -s -H "Cache-Control: no-cache" -H "Pragma: no-cache" https://raw.githubusercontent.com/moshouhot/sublinkX/main/install.sh | sudo bash
+          ```
+        draft: false
+        prerelease: false
+        files: |
+          ./artifacts/*/sublink_*

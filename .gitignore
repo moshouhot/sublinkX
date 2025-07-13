@@ -1,8 +1,37 @@
+# 系统文件
 .DS_Store
 *.DS_Store
-db
-logs
-sublink_amd64 
-sublink_arm64
-sublink.exe
-install.sh
+Thumbs.db
+
+# 运行时文件
+db/
+logs/
+*.log
+
+# 构建产物
+sublink
+sublink_*
+*.exe
+dist/
+
+# 前端构建产物
+webs/dist/
+webs/node_modules/
+webs/.env.local
+webs/.env.*.local
+
+# Go相关
+*.test
+*.out
+vendor/
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 临时文件
+*.tmp
+*.temp

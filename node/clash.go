@@ -397,22 +397,49 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 	// proxies = append(proxies, newProxy)
 	config["proxies"] = proxies
 	// 往ProxyGroup中插入代理列表
-	// ProxiesNameList := []string{"newProxy", "ceshi"}
+	// 通过关键词匹配需要添加节点的代理组
 	proxyGroups := config["proxy-groups"].([]interface{})
+
 	for i, pg := range proxyGroups {
 		proxyGroup, ok := pg.(map[string]interface{})
 		if !ok {
 			continue
 		}
+
+		// 获取代理组名称和类型
+		groupName, nameOk := proxyGroup["name"].(string)
+		groupType, typeOk := proxyGroup["type"].(string)
+
+		if !nameOk || !typeOk {
+			continue
+		}
+
+		// 跳过链式代理
+		if groupType == "relay" {
+			continue
+		}
+
+		// 判断是否应该添加节点的逻辑：
+		// 通过名称关键词判断
+		shouldAddNodes := false
+		keywords := []string{"节点选择", "自动选择", "手动切换"}
+		for _, keyword := range keywords {
+			if strings.Contains(groupName, keyword) {
+				shouldAddNodes = true
+				break
+			}
+		}
+
+		// 如果不需要添加节点，跳过
+		if !shouldAddNodes {
+			continue
+		}
+
 		// 如果 proxyGroup["proxies"] 是 nil，初始化它为一个空的切片
 		if proxyGroup["proxies"] == nil {
 			proxyGroup["proxies"] = []interface{}{}
 		}
-		// 如果为链式代理的话则不插入返回
-		// log.Print("代理类型为:", proxyGroup["type"])
-		if proxyGroup["type"] == "relay" {
-			break
-		}
+
 		// 清除 nil 值
 		var validProxies []interface{}
 		for _, p := range proxyGroup["proxies"].([]interface{}) {
@@ -420,12 +447,16 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 				validProxies = append(validProxies, p)
 			}
 		}
-		// 添加新代理
+
+		// 添加新代理节点
 		for _, newProxy := range ProxiesNameList {
 			validProxies = append(validProxies, newProxy)
 		}
+
 		proxyGroup["proxies"] = validProxies
 		proxyGroups[i] = proxyGroup
+
+		log.Printf("已向代理组 '%s' 添加 %d 个节点", groupName, len(ProxiesNameList))
 	}
 
 	config["proxy-groups"] = proxyGroups
