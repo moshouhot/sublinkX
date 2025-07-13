@@ -374,10 +374,10 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 		}
 	}
 	// 解析 YAML 文件
-	config := make(map[interface{}]interface{})
+	config := make(map[string]interface{})
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
-		log.Printf("error: %v", err)
+		log.Printf("YAML unmarshal error: %v", err)
 		return nil, err
 	}
 
@@ -401,20 +401,11 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 	proxyGroups := config["proxy-groups"].([]interface{})
 
 	for i, pg := range proxyGroups {
-		// 确保代理组是正确的map类型
+		// 代理组应该是map[string]interface{}类型
 		proxyGroup, ok := pg.(map[string]interface{})
 		if !ok {
-			// 尝试转换为map[interface{}]interface{}类型
-			if pgMap, ok := pg.(map[interface{}]interface{}); ok {
-				proxyGroup = make(map[string]interface{})
-				for k, v := range pgMap {
-					if keyStr, ok := k.(string); ok {
-						proxyGroup[keyStr] = v
-					}
-				}
-			} else {
-				continue
-			}
+			log.Printf("警告: 代理组 %d 类型转换失败，跳过处理", i)
+			continue
 		}
 
 		// 获取代理组名称和类型
@@ -475,20 +466,159 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 
 	config["proxy-groups"] = proxyGroups
 
-	// 将修改后的内容写回文件，使用更好的YAML格式
-	newData, err := yaml.Marshal(config)
+	// 生成YAML，使用自定义的编码器保持字段顺序
+	newData, err := marshalYamlWithOrder(config)
 	if err != nil {
 		log.Printf("YAML Marshal error: %v", err)
 		return nil, err
 	}
 
-	// 验证生成的YAML是否有效
-	var testConfig map[interface{}]interface{}
-	err = yaml.Unmarshal(newData, &testConfig)
-	if err != nil {
-		log.Printf("YAML validation error: %v", err)
-		return nil, err
+	return newData, nil
+}
+
+// marshalYamlWithOrder 使用有序的方式编码YAML，特别处理proxy-groups
+func marshalYamlWithOrder(config map[string]interface{}) ([]byte, error) {
+	// 创建一个有序的YAML节点
+	var rootNode yaml.Node
+	rootNode.Kind = yaml.MappingNode
+
+	// 定义字段顺序
+	fieldOrder := []string{"port", "socks-port", "allow-lan", "mode", "log-level", "external-controller", "proxies", "proxy-groups", "rules"}
+
+	// 按顺序添加字段
+	for _, key := range fieldOrder {
+		if value, exists := config[key]; exists {
+			// 添加键节点
+			keyNode := &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: key,
+			}
+			rootNode.Content = append(rootNode.Content, keyNode)
+
+			// 添加值节点
+			if key == "proxy-groups" {
+				// 特殊处理proxy-groups，保持字段顺序
+				valueNode, err := createOrderedProxyGroupsNode(value)
+				if err != nil {
+					return nil, err
+				}
+				rootNode.Content = append(rootNode.Content, valueNode)
+			} else {
+				// 普通字段
+				var valueNode yaml.Node
+				err := valueNode.Encode(value)
+				if err != nil {
+					return nil, err
+				}
+				rootNode.Content = append(rootNode.Content, &valueNode)
+			}
+		}
 	}
 
-	return newData, nil
+	// 添加其他未在fieldOrder中的字段
+	for key, value := range config {
+		found := false
+		for _, orderedKey := range fieldOrder {
+			if key == orderedKey {
+				found = true
+				break
+			}
+		}
+		if !found {
+			keyNode := &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: key,
+			}
+			rootNode.Content = append(rootNode.Content, keyNode)
+
+			var valueNode yaml.Node
+			err := valueNode.Encode(value)
+			if err != nil {
+				return nil, err
+			}
+			rootNode.Content = append(rootNode.Content, &valueNode)
+		}
+	}
+
+	// 创建文档节点
+	docNode := &yaml.Node{
+		Kind:    yaml.DocumentNode,
+		Content: []*yaml.Node{&rootNode},
+	}
+
+	return yaml.Marshal(docNode)
+}
+
+// createOrderedProxyGroupsNode 创建有序的proxy-groups节点
+func createOrderedProxyGroupsNode(proxyGroups interface{}) (*yaml.Node, error) {
+	groups, ok := proxyGroups.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("proxy-groups不是数组类型")
+	}
+
+	var seqNode yaml.Node
+	seqNode.Kind = yaml.SequenceNode
+
+	for _, group := range groups {
+		groupMap, ok := group.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// 创建有序的代理组节点
+		var groupNode yaml.Node
+		groupNode.Kind = yaml.MappingNode
+
+		// 定义代理组字段顺序
+		groupFieldOrder := []string{"name", "type", "url", "interval", "filter", "proxies"}
+
+		// 按顺序添加字段
+		for _, key := range groupFieldOrder {
+			if value, exists := groupMap[key]; exists {
+				// 添加键节点
+				keyNode := &yaml.Node{
+					Kind:  yaml.ScalarNode,
+					Value: key,
+				}
+				groupNode.Content = append(groupNode.Content, keyNode)
+
+				// 添加值节点
+				var valueNode yaml.Node
+				err := valueNode.Encode(value)
+				if err != nil {
+					return nil, err
+				}
+				groupNode.Content = append(groupNode.Content, &valueNode)
+			}
+		}
+
+		// 添加其他字段
+		for key, value := range groupMap {
+			found := false
+			for _, orderedKey := range groupFieldOrder {
+				if key == orderedKey {
+					found = true
+					break
+				}
+			}
+			if !found {
+				keyNode := &yaml.Node{
+					Kind:  yaml.ScalarNode,
+					Value: key,
+				}
+				groupNode.Content = append(groupNode.Content, keyNode)
+
+				var valueNode yaml.Node
+				err := valueNode.Encode(value)
+				if err != nil {
+					return nil, err
+				}
+				groupNode.Content = append(groupNode.Content, &valueNode)
+			}
+		}
+
+		seqNode.Content = append(seqNode.Content, &groupNode)
+	}
+
+	return &seqNode, nil
 }
