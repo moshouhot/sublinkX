@@ -401,9 +401,20 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 	proxyGroups := config["proxy-groups"].([]interface{})
 
 	for i, pg := range proxyGroups {
+		// 确保代理组是正确的map类型
 		proxyGroup, ok := pg.(map[string]interface{})
 		if !ok {
-			continue
+			// 尝试转换为map[interface{}]interface{}类型
+			if pgMap, ok := pg.(map[interface{}]interface{}); ok {
+				proxyGroup = make(map[string]interface{})
+				for k, v := range pgMap {
+					if keyStr, ok := k.(string); ok {
+						proxyGroup[keyStr] = v
+					}
+				}
+			} else {
+				continue
+			}
 		}
 
 		// 获取代理组名称和类型
@@ -435,16 +446,16 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 			continue
 		}
 
-		// 如果 proxyGroup["proxies"] 是 nil，初始化它为一个空的切片
-		if proxyGroup["proxies"] == nil {
-			proxyGroup["proxies"] = []interface{}{}
-		}
-
-		// 清除 nil 值
+		// 安全地处理proxies字段
 		var validProxies []interface{}
-		for _, p := range proxyGroup["proxies"].([]interface{}) {
-			if p != nil {
-				validProxies = append(validProxies, p)
+		if proxiesInterface, exists := proxyGroup["proxies"]; exists && proxiesInterface != nil {
+			if proxiesList, ok := proxiesInterface.([]interface{}); ok {
+				// 清除 nil 值
+				for _, p := range proxiesList {
+					if p != nil {
+						validProxies = append(validProxies, p)
+					}
+				}
 			}
 		}
 
@@ -453,7 +464,10 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 			validProxies = append(validProxies, newProxy)
 		}
 
+		// 更新代理组的proxies字段
 		proxyGroup["proxies"] = validProxies
+
+		// 确保代理组结构完整，重新设置到数组中
 		proxyGroups[i] = proxyGroup
 
 		log.Printf("已向代理组 '%s' 添加 %d 个节点", groupName, len(ProxiesNameList))
@@ -461,10 +475,20 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 
 	config["proxy-groups"] = proxyGroups
 
-	// 将修改后的内容写回文件
+	// 将修改后的内容写回文件，使用更好的YAML格式
 	newData, err := yaml.Marshal(config)
 	if err != nil {
-		log.Printf("error: %v", err)
+		log.Printf("YAML Marshal error: %v", err)
+		return nil, err
 	}
+
+	// 验证生成的YAML是否有效
+	var testConfig map[interface{}]interface{}
+	err = yaml.Unmarshal(newData, &testConfig)
+	if err != nil {
+		log.Printf("YAML validation error: %v", err)
+		return nil, err
+	}
+
 	return newData, nil
 }
