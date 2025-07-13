@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # 不要因为一个构建失败就取消其他构建
       matrix:
         include:
           - goos: linux
@@ -36,25 +37,18 @@ jobs:
       with:
         go-version: '1.22'
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-
-    - name: Build frontend
-      run: |
-        cd webs
-        npm install
-        npm run build
-
     - name: Build backend
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
         CGO_ENABLED: 0
       run: |
+        echo "Building for ${{ matrix.goos }}/${{ matrix.goarch }}"
+        go version
         go mod tidy
-        go build -ldflags="-s -w" -o ${{ matrix.output }} main.go
+        go mod verify
+        go build -v -ldflags="-s -w" -o ${{ matrix.output }} main.go
+        ls -la ${{ matrix.output }}
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
