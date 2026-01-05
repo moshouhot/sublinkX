@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { ref,onMounted,nextTick  } from 'vue'
-import {getTemp,AddTemp,UpdateTemp,DelTemp} from "@/api/subcription/temp"
+import {getTemp,getTempContent,AddTemp,UpdateTemp,DelTemp} from "@/api/subcription/temp"
 interface Temp {
   file: string;
   text: string;
@@ -11,6 +11,7 @@ const Tempoldname = ref('')
 const Tempname = ref('')
 const TempText = ref('')
 const dialogVisible = ref(false)
+const dialogLoading = ref(false) // 新增：加载状态
 const table = ref()
 const TempTitle = ref('')
 const radio1 = ref('1')
@@ -62,16 +63,22 @@ const selectAll = () => {
         })
     })
 }
-const handleEdit = (row:any) => {
-  for (let i = 0; i < tableData.value.length; i++) {
-    if (tableData.value[i].file === row.file) {
-      TempTitle.value= '编辑模版'
-      Tempname.value = tableData.value[i].file
-      Tempoldname.value = Tempname.value
-      TempText.value = tableData.value[i].text
-      dialogVisible.value = true
-      // value1.value = tableData.value[i].Nodes.map((item) => item.Name)
-    }
+const handleEdit = async (row:any) => {
+  TempTitle.value = '编辑模版'
+  Tempname.value = row.file
+  Tempoldname.value = row.file
+  TempText.value = '' // 先清空
+  dialogVisible.value = true
+  dialogLoading.value = true
+  
+  try {
+    // 异步获取模版内容
+    const {data} = await getTempContent(row.file)
+    TempText.value = data.text
+  } catch (error) {
+    ElMessage.error('获取模版内容失败')
+  } finally {
+    dialogLoading.value = false
   }
 }
 const toggleSelection = () => {

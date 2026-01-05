@@ -7,6 +7,15 @@ export function getTemp(){
   });
 }
 
+// 新增：获取单个模版内容
+export function getTempContent(filename: string){
+  return request({
+    url: "/api/v1/template/content",
+    method: "get",
+    params: { filename },
+  });
+}
+
 export function AddTemp(data: any){
   return request({
     url: "/api/v1/template/add",

@@ -12,6 +12,7 @@ func Templates(r *gin.Engine) {
 		TempsGroup.POST("/add", api.AddTemp)
 		TempsGroup.POST("/delete", api.DelTemp)
 		TempsGroup.GET("/get", api.GetTempS)
+		TempsGroup.GET("/content", api.GetTempContent) // 新增：获取单个模版内容
 		TempsGroup.POST("/update", api.UpdateTemp)
 	}
 

@@ -93,6 +93,7 @@ func safeFilePath(filename string) (string, error) {
 	return finalCleanPath, nil
 }
 
+// GetTempS 获取模版列表（不包含内容，提升性能）
 func GetTempS(c *gin.Context) {
 	// 由于 init() 函数已经确保了 baseTemplateDir 的存在，这里无需再次检查和创建。
 	files, err := os.ReadDir(baseTemplateDir)
@@ -111,9 +112,8 @@ func GetTempS(c *gin.Context) {
 			continue
 		}
 
-		// **修复点：对读取的文件名也使用 safeFilePath 进行验证**
-		// 这可以防止通过符号链接（symlink）进行的目录遍历，从而避免信息泄露。
-		fullPathToRead, err := safeFilePath(file.Name())
+		// 对读取的文件名也使用 safeFilePath 进行验证
+		_, err := safeFilePath(file.Name())
 		if err != nil {
 			log.Printf("跳过不安全或非法文件 (读取): %s, 错误: %v", file.Name(), err)
 			continue // 跳过不安全的文件
@@ -126,16 +126,10 @@ func GetTempS(c *gin.Context) {
 		}
 		modTime := info.ModTime().Format("2006-01-02 15:04:05")
 
-		// 使用经过安全验证的完整路径来读取文件内容
-		text, err := os.ReadFile(fullPathToRead)
-		if err != nil {
-			log.Printf("读取文件内容失败: %s, 错误: %v", fullPathToRead, err)
-			continue // 跳过无法读取的文件
-		}
-
+		// 性能优化：列表不再读取文件内容，只返回文件名和时间
 		temp := Temp{
 			File:       file.Name(),
-			Text:       string(text),
+			Text:       "", // 内容通过 GetTempContent 单独获取
 			CreateDate: modTime,
 		}
 		temps = append(temps, temp)
@@ -153,6 +147,64 @@ func GetTempS(c *gin.Context) {
 		"code": "00000",
 		"data": temps,
 		"msg":  "ok",
+	})
+}
+
+// GetTempContent 获取单个模版的内容
+func GetTempContent(c *gin.Context) {
+	filename := c.Query("filename")
+
+	if filename == "" {
+		c.JSON(400, gin.H{
+			"msg": "文件名不能为空",
+		})
+		return
+	}
+
+	// 获取安全的文件路径
+	fullPath, err := safeFilePath(filename)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"msg": "文件名非法: " + err.Error(),
+		})
+		return
+	}
+
+	// 检查文件是否存在
+	info, err := os.Stat(fullPath)
+	if os.IsNotExist(err) {
+		c.JSON(400, gin.H{
+			"msg": "文件不存在",
+		})
+		return
+	} else if err != nil {
+		log.Println("检查文件存在性失败:", err)
+		c.JSON(500, gin.H{
+			"msg": "服务器错误：检查文件失败",
+		})
+		return
+	}
+
+	// 读取文件内容
+	text, err := os.ReadFile(fullPath)
+	if err != nil {
+		log.Printf("读取文件内容失败: %s, 错误: %v", fullPath, err)
+		c.JSON(500, gin.H{
+			"msg": "服务器错误：无法读取文件内容",
+		})
+		return
+	}
+
+	modTime := info.ModTime().Format("2006-01-02 15:04:05")
+
+	c.JSON(200, gin.H{
+		"code": "00000",
+		"data": Temp{
+			File:       filename,
+			Text:       string(text),
+			CreateDate: modTime,
+		},
+		"msg": "ok",
 	})
 }
 func UpdateTemp(c *gin.Context) {
