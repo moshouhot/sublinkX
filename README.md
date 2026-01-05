@@ -825,53 +825,27 @@ r.GET("/api/v1/custom", CustomHandler)
 
 ## [快速安装]
 
-### 🆕 首次安装
+### 🚀 一键安装/更新
 
-#### Linux 一键安装
-```bash
-curl -s -H "Cache-Control: no-cache" -H "Pragma: no-cache" https://raw.githubusercontent.com/moshouhot/sublinkX/main/install.sh | sudo bash
-```
-
-安装完成后，使用 `sublink` 命令呼出管理菜单。
-
-默认账号：`admin` 密码：`123456` 默认端口：`8000`
-
----
-
-### 🔄 更新安装
-
-在服务器上执行以下命令，即可自动检测架构并更新到最新版本：
+无论是首次安装还是更新，都可以使用同一条命令：
 
 ```bash
-# 停止服务
-systemctl stop sublink
-
-# 自动检测架构并下载对应版本
-ARCH=$(uname -m)
-if [ "$ARCH" = "x86_64" ]; then
-    FILE="sublink_amd64"
-elif [ "$ARCH" = "aarch64" ]; then
-    FILE="sublink_arm64"
-else
-    echo "不支持的架构: $ARCH"
-    exit 1
-fi
-
-# 下载最新版本
-curl -LO "https://github.com/moshouhot/sublinkX/releases/latest/download/$FILE"
-
-# 替换二进制文件
-mv $FILE /usr/local/bin/sublink/sublink
-chmod +x /usr/local/bin/sublink/sublink
-
-# 启动服务
-systemctl start sublink
-
-# 查看版本确认更新成功
-/usr/local/bin/sublink/sublink -version
+curl -s https://raw.githubusercontent.com/moshouhot/sublinkX/main/install.sh | sudo bash
 ```
 
-> ℹ️ **注意**：更新不会影响现有数据。`db/`、`template/`、`logs/` 目录中的文件会保留。
+脚本会自动：
+- ✅ 检测系统架构 (x86_64 / ARM64)
+- ✅ 检测是首次安装还是更新
+- ✅ 下载对应版本的二进制文件
+- ✅ 配置 systemd 服务并启动
+- ✅ 安装管理菜单（输入 `sublink` 呼出）
+
+**默认信息**：
+- 账号：`admin` 密码：`123456`
+- 端口：`8000`
+- 管理菜单：运行 `sublink` 命令
+
+> ℹ️ **注意**：更新时不会影响现有数据，`db/`、`template/`、`logs/` 目录中的文件会保留。
 
 ---
 
