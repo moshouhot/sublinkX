@@ -840,17 +840,28 @@ curl -s -H "Cache-Control: no-cache" -H "Pragma: no-cache" https://raw.githubuse
 
 ### 🔄 更新安装
 
-在服务器上执行以下命令，即可更新到最新版本：
+在服务器上执行以下命令，即可自动检测架构并更新到最新版本：
 
 ```bash
 # 停止服务
 systemctl stop sublink
 
-# 下载最新版本（无需指定版本号，自动获取最新）
-curl -LO https://github.com/moshouhot/sublinkX/releases/latest/download/sublink_amd64
+# 自动检测架构并下载对应版本
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+    FILE="sublink_amd64"
+elif [ "$ARCH" = "aarch64" ]; then
+    FILE="sublink_arm64"
+else
+    echo "不支持的架构: $ARCH"
+    exit 1
+fi
+
+# 下载最新版本
+curl -LO "https://github.com/moshouhot/sublinkX/releases/latest/download/$FILE"
 
 # 替换二进制文件
-mv sublink_amd64 /usr/local/bin/sublink/sublink
+mv $FILE /usr/local/bin/sublink/sublink
 chmod +x /usr/local/bin/sublink/sublink
 
 # 启动服务
