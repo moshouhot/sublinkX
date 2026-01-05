@@ -13,6 +13,20 @@ NC='\033[0m' # No Color
 INSTALL_DIR="/usr/local/bin/sublink"
 SERVICE_NAME="sublink"
 REPO="moshouhot/sublinkX"
+FORCE_UPDATE=false
+
+# 参数解析
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -f|--force)
+            FORCE_UPDATE=true
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # 打印带颜色的信息
 info() { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -213,13 +227,13 @@ main() {
         info "检测到已安装版本: $CURRENT_VERSION"
         # 去掉 v 前缀进行比较
         LATEST_VERSION_NUM=$(echo "$LATEST_VERSION" | sed 's/^v//')
-        if [ "$CURRENT_VERSION" = "$LATEST_VERSION_NUM" ]; then
+        if [ "$CURRENT_VERSION" = "$LATEST_VERSION_NUM" ] && [ "$FORCE_UPDATE" = false ]; then
             warning "当前已是最新版本 ($LATEST_VERSION)"
-            read -p "是否强制重新安装? [y/N]: " force
-            if [[ ! "$force" =~ ^[Yy]$ ]]; then
-                info "取消操作"
-                exit 0
-            fi
+            info "如需强制更新，请使用: curl -s ... | sudo bash -s -- -f"
+            exit 0
+        fi
+        if [ "$FORCE_UPDATE" = true ]; then
+            info "强制更新模式..."
         fi
         info "开始更新..."
         stop_service
