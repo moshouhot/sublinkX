@@ -14,7 +14,7 @@
             <div>
               <p>{{ greetings }}</p>
               <p class="text-sm text-gray">
-                今日天气晴朗，气温在15℃至25℃之间，东南风。
+                当前版本：v{{ version }} 修改By：moshouhot
               </p>
             </div>
           </div>
@@ -48,11 +48,12 @@ defineOptions({
 });
 
 import { useUserStore } from "@/store/modules/user";
-import { getSubTotal,getNodeTotal } from "@/api/total";
+import { getSubTotal,getNodeTotal,getVersion } from "@/api/total";
 const userStore = useUserStore();
 const date: Date = new Date();
 const subTotal = ref(0);
 const nodeTotal = ref(0);
+const version = ref("--");
 // 右上角数量
 const statisticData = ref([
   {
@@ -78,9 +79,14 @@ const getnodetotal = async () => {
   nodeTotal.value = data;
   statisticData.value[1].value = data;
 };
+const getversion = async () => {
+  const { data } = await getVersion();
+  version.value = data;
+};
 onMounted(() => {
   getsubtotal();
   getnodetotal();
+  getversion();
 });
 const greetings = computed(() => {
   const hours = date.getHours();
