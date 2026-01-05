@@ -825,14 +825,46 @@ r.GET("/api/v1/custom", CustomHandler)
 
 ## [快速安装]
 
-### Linux一键安装
+### 🆕 首次安装
+
+#### Linux 一键安装
 ```bash
 curl -s -H "Cache-Control: no-cache" -H "Pragma: no-cache" https://raw.githubusercontent.com/moshouhot/sublinkX/main/install.sh | sudo bash
 ```
 
 安装完成后，使用 `sublink` 命令呼出管理菜单。
 
-### Docker快速部署
+默认账号：`admin` 密码：`123456` 默认端口：`8000`
+
+---
+
+### 🔄 更新安装
+
+在服务器上执行以下命令，即可更新到最新版本：
+
+```bash
+# 停止服务
+systemctl stop sublink
+
+# 下载最新版本（无需指定版本号，自动获取最新）
+curl -LO https://github.com/moshouhot/sublinkX/releases/latest/download/sublink_amd64
+
+# 替换二进制文件
+mv sublink_amd64 /usr/local/bin/sublink/sublink
+chmod +x /usr/local/bin/sublink/sublink
+
+# 启动服务
+systemctl start sublink
+
+# 查看版本确认更新成功
+/usr/local/bin/sublink/sublink -version
+```
+
+> ℹ️ **注意**：更新不会影响现有数据。`db/`、`template/`、`logs/` 目录中的文件会保留。
+
+---
+
+### 🐳 Docker 快速部署
 ```bash
 # 创建工作目录
 mkdir sublinkx && cd sublinkx
@@ -852,22 +884,22 @@ docker run --name sublinkx -p 8000:8000 \
 
 ## [更新日志]
 
+### v2.3 更新内容
+
+#### 🚀 性能优化
+- **模版列表 API 优化**：列表与内容分离，响应速度从 49 秒优化到毫秒级
+- **按需加载**：编辑模版时才获取内容，减少服务器负载
+- **新增 API**：`/api/v1/template/content` 用于获取单个模版内容
+
+#### 🐛 问题修复
+- 修复模版列表显示“暂无数据”的问题（API 超时导致）
+
 ### v2.2 更新内容
 
 #### 🎉 新功能
 - **智能代理组选择**：只向包含特定关键词的代理组添加节点
 - **关键词匹配**：支持`节点选择`、`自动选择`、`手动切换`关键词识别
 - **无数量限制**：支持任意数量的符合条件的代理组
-
-#### 🔧 核心优化
-- 简化代理组合并逻辑，减少配置冗余
-- 优化节点分配策略，提高配置生成效率
-- 改进代码结构，增强可维护性
-
-#### 📦 部署改进
-- 新增GitHub Actions自动编译
-- 支持多平台二进制文件生成（Linux/Windows/macOS）
-- 优化一键安装脚本
 
 ### v2.1 更新内容
 
