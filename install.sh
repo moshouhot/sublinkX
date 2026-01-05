@@ -57,7 +57,11 @@ get_latest_version() {
 # 获取当前安装的版本
 get_current_version() {
     if [ -f "$INSTALL_DIR/sublink" ]; then
-        CURRENT_VERSION=$("$INSTALL_DIR/sublink" -version 2>/dev/null || echo "未知")
+        # 在安装目录执行，避免目录错误
+        CURRENT_VERSION=$(cd "$INSTALL_DIR" && ./sublink -version 2>/dev/null | tail -1)
+        if [ -z "$CURRENT_VERSION" ]; then
+            CURRENT_VERSION="未知"
+        fi
         IS_UPDATE=true
     else
         CURRENT_VERSION="未安装"
