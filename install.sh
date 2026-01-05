@@ -227,13 +227,8 @@ main() {
         info "检测到已安装版本: $CURRENT_VERSION"
         # 去掉 v 前缀进行比较
         LATEST_VERSION_NUM=$(echo "$LATEST_VERSION" | sed 's/^v//')
-        if [ "$CURRENT_VERSION" = "$LATEST_VERSION_NUM" ] && [ "$FORCE_UPDATE" = false ]; then
-            warning "当前已是最新版本 ($LATEST_VERSION)"
-            info "如需强制更新，请使用: curl -s ... | sudo bash -s -- -f"
-            exit 0
-        fi
-        if [ "$FORCE_UPDATE" = true ]; then
-            info "强制更新模式..."
+        if [ "$CURRENT_VERSION" = "$LATEST_VERSION_NUM" ]; then
+            info "当前已是最新版本 ($LATEST_VERSION)，执行强制更新..."
         fi
         info "开始更新..."
         stop_service
