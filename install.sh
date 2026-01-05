@@ -57,8 +57,8 @@ get_latest_version() {
 # 获取当前安装的版本
 get_current_version() {
     if [ -f "$INSTALL_DIR/sublink" ]; then
-        # 在安装目录执行，避免目录错误
-        CURRENT_VERSION=$(cd "$INSTALL_DIR" && ./sublink -version 2>/dev/null | tail -1)
+        # 在安装目录执行，使用 grep 只获取版本号（格式如 2.3）
+        CURRENT_VERSION=$(cd "$INSTALL_DIR" && ./sublink -version 2>/dev/null | grep -oE '^[0-9]+\.[0-9]+' | head -1)
         if [ -z "$CURRENT_VERSION" ]; then
             CURRENT_VERSION="未知"
         fi
@@ -211,7 +211,9 @@ main() {
     
     if [ "$IS_UPDATE" = true ]; then
         info "检测到已安装版本: $CURRENT_VERSION"
-        if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+        # 去掉 v 前缀进行比较
+        LATEST_VERSION_NUM=$(echo "$LATEST_VERSION" | sed 's/^v//')
+        if [ "$CURRENT_VERSION" = "$LATEST_VERSION_NUM" ]; then
             warning "当前已是最新版本 ($LATEST_VERSION)"
             read -p "是否强制重新安装? [y/N]: " force
             if [[ ! "$force" =~ ^[Yy]$ ]]; then
